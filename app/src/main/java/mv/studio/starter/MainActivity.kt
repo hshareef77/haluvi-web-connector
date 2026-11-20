@@ -1,11 +1,12 @@
 package mv.haluvi.webconnector
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,33 +21,85 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import org.json.JSONArray
+import org.json.JSONObject
+
+private data class ServiceReport(
+    val id: Long,
+    val url: String,
+    val purpose: String,
+    val body: String
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { MaterialTheme { Surface { ConnectorApp() } } }
+        setContent {
+            MaterialTheme {
+                Surface {
+                    val reports = remember {
+                        mutableStateListOf<ServiceReport>().apply {
+                            addAll(loadReports(this@MainActivity))
+                        }
+                    }
+                    ConnectorApp(
+                        reports = reports,
+                        onSaveReport = { report ->
+                            reports.add(0, report)
+                            saveReports(this@MainActivity, reports)
+                        },
+                        onShareReport = ::shareReport
+                    )
+                }
+            }
+        }
+    }
+
+    private fun shareReport(report: ServiceReport) {
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "Haluvi Web Connector report: ${report.url}")
+            putExtra(Intent.EXTRA_TEXT, report.body)
+        }
+        startActivity(Intent.createChooser(shareIntent, "Share technical report"))
     }
 }
 
 private enum class Screen { HOME, ADD_SERVICE, REPORT }
 
 @Composable
-private fun ConnectorApp() {
+private fun ConnectorApp(
+    reports: List<ServiceReport>,
+    onSaveReport: (ServiceReport) -> Unit,
+    onShareReport: (ServiceReport) -> Unit
+) {
     var screen by remember { mutableStateOf(Screen.HOME) }
     var serviceUrl by remember { mutableStateOf("") }
     var servicePurpose by remember { mutableStateOf("") }
-    var report by remember { mutableStateOf("") }
+    var currentReport by remember { mutableStateOf<ServiceReport?>(null) }
 
     when (screen) {
-        Screen.HOME -> HomeScreen(onAdd = { screen = Screen.ADD_SERVICE })
+        Screen.HOME -> HomeScreen(
+            reports = reports,
+            onAdd = {
+                serviceUrl = ""
+                servicePurpose = ""
+                screen = Screen.ADD_SERVICE
+            },
+            onOpenReport = { report ->
+                currentReport = report
+                screen = Screen.REPORT
+            }
+        )
         Screen.ADD_SERVICE -> AddServiceScreen(
             url = serviceUrl,
             onUrlChange = { serviceUrl = it },
@@ -54,25 +107,55 @@ private fun ConnectorApp() {
             onPurposeChange = { servicePurpose = it },
             onBack = { screen = Screen.HOME },
             onCreateReport = {
-                report = buildReport(serviceUrl, servicePurpose)
+                val report = ServiceReport(
+                    id = System.currentTimeMillis(),
+                    url = serviceUrl.trim(),
+                    purpose = servicePurpose.trim().ifBlank { "Not specified" },
+                    body = buildReport(serviceUrl.trim(), servicePurpose.trim())
+                )
+                onSaveReport(report)
+                currentReport = report
                 screen = Screen.REPORT
             }
         )
-        Screen.REPORT -> ReportScreen(report, onBack = { screen = Screen.ADD_SERVICE })
+        Screen.REPORT -> currentReport?.let { report ->
+            ReportScreen(
+                report = report,
+                onBack = { screen = Screen.HOME },
+                onShare = { onShareReport(report) }
+            )
+        }
     }
 }
 
 @Composable
-private fun HomeScreen(onAdd: () -> Unit) {
+private fun HomeScreen(
+    reports: List<ServiceReport>,
+    onAdd: () -> Unit,
+    onOpenReport: (ServiceReport) -> Unit
+) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Haluvi Web Connector", style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.semantics { heading() })
-        Text("Build accessible Android screens for web services that provide a supported way to connect.")
+        Text(
+            "Haluvi Web Connector",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.semantics { heading() }
+        )
+        Text("Prepare accessible Android integrations for web services that provide a supported way to connect.")
         Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text("Analyze a service") }
-        Text("This first setup creates a technical report. It does not sign in to the service or convert a website yet.")
+        Text("Your reports are saved on this device. They do not contain passwords or account sessions.")
+        Text("Saved reports", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
+        if (reports.isEmpty()) {
+            Text("No reports saved yet.")
+        } else {
+            reports.forEach { report ->
+                OutlinedButton(onClick = { onOpenReport(report) }, modifier = Modifier.fillMaxWidth()) {
+                    Text("${report.url}. Requested task: ${report.purpose}")
+                }
+            }
+        }
     }
 }
 
@@ -114,16 +197,17 @@ private fun AddServiceScreen(
 }
 
 @Composable
-private fun ReportScreen(report: String, onBack: () -> Unit) {
+private fun ReportScreen(report: ServiceReport, onBack: () -> Unit, onShare: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text("Initial feasibility report", style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.semantics { heading() })
-        Text(report)
+        Text(report.body)
+        Button(onClick = onShare, modifier = Modifier.fillMaxWidth()) { Text("Share report text") }
         Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Edit service details") }
+        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Back to saved reports") }
     }
 }
 
@@ -156,4 +240,35 @@ Next information needed for a full adapter
 - Any forms, buttons, lists, file uploads, payment steps, or confirmation pages involved.
 - Permission from the service owner if the integration is not publicly documented.
 """.trimIndent()
+}
+
+private fun saveReports(context: Context, reports: List<ServiceReport>) {
+    val array = JSONArray()
+    reports.forEach { report ->
+        array.put(JSONObject().apply {
+            put("id", report.id)
+            put("url", report.url)
+            put("purpose", report.purpose)
+            put("body", report.body)
+        })
+    }
+    context.getSharedPreferences("saved_reports", Context.MODE_PRIVATE)
+        .edit().putString("reports", array.toString()).apply()
+}
+
+private fun loadReports(context: Context): List<ServiceReport> {
+    val value = context.getSharedPreferences("saved_reports", Context.MODE_PRIVATE)
+        .getString("reports", null) ?: return emptyList()
+    return runCatching {
+        val array = JSONArray(value)
+        (0 until array.length()).map { index ->
+            val item = array.getJSONObject(index)
+            ServiceReport(
+                id = item.getLong("id"),
+                url = item.getString("url"),
+                purpose = item.getString("purpose"),
+                body = item.getString("body")
+            )
+        }
+    }.getOrDefault(emptyList())
 }

@@ -50,9 +50,9 @@ The first implementation should not send user logins or service data to an AI pr
 
 ## First build and known gaps
 
-The first prototype provides a screen-reader-friendly intake flow and a plainly labeled initial report. The report explicitly says it is not a live inspection, avoiding false confidence. The repository now also defines adapter safety rules, a sample package, a build workflow, and the product roadmap.
+The first prototype provides a screen-reader-friendly intake flow, saves reports on-device, and shares report text through Android's system share sheet. The report explicitly says it is not a live inspection, avoiding false confidence. The repository also defines adapter safety rules, a sample package, build workflows, and the product roadmap.
 
-Not implemented yet: live documentation discovery, report export, adapter generation/import, OAuth, encrypted token storage, native API execution, and site-specific integrations. These should be delivered in stages, with each integration grounded in a real service the user wants to support.
+Not implemented yet: live documentation discovery, file-based report export, adapter generation/import, OAuth, encrypted token storage, native API execution, and site-specific integrations. These should be delivered in stages, with each integration grounded in a real service the user wants to support.
 
 ## Technical choices
 
