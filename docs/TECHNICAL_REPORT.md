@@ -58,7 +58,7 @@ Not implemented yet: live documentation discovery, file-based report export, ada
 
 - Kotlin and Jetpack Compose for Android-native UI.
 - Minimum Android API 26; compile/target SDK 36.
-- JDK 17, Android Gradle Plugin 8.13.2, Kotlin 2.2.20, Compose BOM 2026.09.00.
+- JDK 17, Android Gradle Plugin 9.1.1, Gradle 9.3.1, Android's built-in Kotlin 2.2.10 support, and Compose BOM 2026.09.00. Compose 1.12 requires compile SDK 37 and AGP 9 or newer.
 - Provider OAuth through an external user agent with PKCE; tokens protected with Android Keystore.
 - Adapter files are data-only JSON; a strict parser validates schema and host/method allowlists.
 - No WebView or embedded website is part of the app's integration path.
@@ -69,4 +69,5 @@ Not implemented yet: live documentation discovery, file-based report export, ada
 - Android Developers, [Android Keystore system](https://developer.android.com/privacy-and-security/keystore).
 - Android Developers, [Security tips](https://developer.android.com/privacy-and-security/security-tips).
 - Android Developers, [Compose BOM](https://developer.android.com/develop/ui/compose/bom).
-- Android Developers, [Android Gradle Plugin 8.13 release notes](https://developer.android.com/build/releases/agp-8-13-0-release-notes).
+- Android Developers, [Android Gradle Plugin 9.1 release notes](https://developer.android.com/build/releases/agp-9-1-0-release-notes).
+- Android Developers, [Migrate to built-in Kotlin](https://developer.android.com/build/migrate-to-built-in-kotlin).

@@ -1,12 +1,11 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
     namespace = "mv.haluvi.webconnector"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "mv.haluvi.webconnector"
@@ -20,7 +19,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
 
     val keyStorePath = System.getenv("ANDROID_KEYSTORE_PATH")
