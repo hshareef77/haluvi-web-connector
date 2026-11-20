@@ -6,7 +6,7 @@ An accessibility-first Android project for preparing native integrations with we
 
 A website cannot be universally converted into a reliable native application without service-specific knowledge. The strongest path is an official API or Android SDK plus an approved native sign-in flow. A service that exposes only private web pages may block automation or make it fragile. The app must report these limits clearly and never promise that any website will work.
 
-The first prototype is a report-first Android shell. It accepts a service URL and requested task, then explains what must be checked. It does not yet inspect a live website, sign in, store sessions, or execute service actions.
+The first prototype is a report-first Android shell with one public API demonstration. It accepts a service URL and requested task, then explains what must be checked. The demo retrieves sample posts from JSONPlaceholder and displays them using native Android controls. It does not yet inspect arbitrary websites, sign in, store sessions, or generate adapters.
 
 ## Planned user workflow
 
@@ -47,6 +47,10 @@ The first prototype is a report-first Android shell. It accepts a service URL an
 - `samples/` non-secret sample service definition.
 - `.github/workflows/build-apk.yml` debug APK workflow.
 - `.github/workflows/build-release.yml` signed release workflow.
+
+## Public API demonstration
+
+On the home screen, choose **Try the public API demo** to fetch sample posts from [JSONPlaceholder](https://jsonplaceholder.typicode.com/). It uses HTTPS, requires no account, and only reads test data. This shows native rendering and API networking; it does not convert the JSONPlaceholder website.
 
 ## Build
 

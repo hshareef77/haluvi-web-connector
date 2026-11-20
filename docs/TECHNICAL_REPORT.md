@@ -2,7 +2,7 @@
 
 **Prepared:** 20 November 2026  
 **Status:** Product and architecture assessment; no target service has been analyzed yet.  
-**Current prototype:** Android-native report intake only. It does not fetch a website, authenticate, save sessions, or perform service actions.
+**Current prototype:** Android-native report intake plus a read-only public API demonstration. It does not inspect arbitrary websites, authenticate, save sessions, or execute adapters.
 
 ## Recommendation
 
@@ -50,9 +50,9 @@ The first implementation should not send user logins or service data to an AI pr
 
 ## First build and known gaps
 
-The first prototype provides a screen-reader-friendly intake flow, saves reports on-device, and shares report text through Android's system share sheet. The report explicitly says it is not a live inspection, avoiding false confidence. The repository also defines adapter safety rules, a sample package, build workflows, and the product roadmap.
+The first prototype provides a screen-reader-friendly intake flow, saves reports on-device, and shares report text through Android's system share sheet. It also fetches public sample posts from JSONPlaceholder and presents them using native Android controls. The report explicitly says it is not a live inspection, avoiding false confidence. The repository also defines adapter safety rules, a sample package, build workflows, and the product roadmap.
 
-Not implemented yet: live documentation discovery, file-based report export, adapter generation/import, OAuth, encrypted token storage, native API execution, and site-specific integrations. These should be delivered in stages, with each integration grounded in a real service the user wants to support.
+Not implemented yet: live documentation discovery, file-based report export, adapter generation/import, OAuth, encrypted token storage, generalized native API execution, and site-specific integrations. The demo is a fixed read-only test endpoint, not yet the adapter engine. These should be delivered in stages, with each integration grounded in a real service the user wants to support.
 
 ## Technical choices
 

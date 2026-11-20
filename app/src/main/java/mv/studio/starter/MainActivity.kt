@@ -3,6 +3,10 @@ package mv.haluvi.webconnector
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import java.net.HttpURLConnection
+import java.net.URL
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -32,6 +37,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import org.json.JSONArray
 import org.json.JSONObject
+
+private data class DemoPost(val id: Int, val title: String, val body: String)
 
 private data class ServiceReport(
     val id: Long,
@@ -57,11 +64,38 @@ class MainActivity : ComponentActivity() {
                             reports.add(0, report)
                             saveReports(this@MainActivity, reports)
                         },
-                        onShareReport = ::shareReport
+                        onShareReport = ::shareReport,
+                        onLoadDemo = ::loadDemoPosts
                     )
                 }
             }
         }
+    }
+
+    private fun loadDemoPosts(callback: (Result<List<DemoPost>>) -> Unit) {
+        Thread {
+            val result = runCatching {
+                val connection = (URL("https://jsonplaceholder.typicode.com/posts").openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 10000
+                    readTimeout = 10000
+                    setRequestProperty("Accept", "application/json")
+                }
+                try {
+                    val status = connection.responseCode
+                    check(status in 200..299) { "The sample service returned HTTP $status." }
+                    val payload = connection.inputStream.bufferedReader().use { it.readText() }
+                    val items = JSONArray(payload)
+                    (0 until minOf(items.length(), 10)).map { index ->
+                        val item = items.getJSONObject(index)
+                        DemoPost(item.getInt("id"), item.getString("title"), item.getString("body"))
+                    }
+                } finally {
+                    connection.disconnect()
+                }
+            }
+            Handler(Looper.getMainLooper()).post { callback(result) }
+        }.start()
     }
 
     private fun shareReport(report: ServiceReport) {
@@ -74,22 +108,39 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { HOME, ADD_SERVICE, REPORT }
+private enum class Screen { HOME, ADD_SERVICE, REPORT, DEMO }
 
 @Composable
 private fun ConnectorApp(
     reports: List<ServiceReport>,
     onSaveReport: (ServiceReport) -> Unit,
-    onShareReport: (ServiceReport) -> Unit
+    onShareReport: (ServiceReport) -> Unit,
+    onLoadDemo: ((Result<List<DemoPost>>) -> Unit) -> Unit
 ) {
+    var demoPosts by remember { mutableStateOf<List<DemoPost>>(emptyList()) }
+    var demoLoading by remember { mutableStateOf(false) }
+    var demoError by remember { mutableStateOf("") }
     var screen by remember { mutableStateOf(Screen.HOME) }
     var serviceUrl by remember { mutableStateOf("") }
     var servicePurpose by remember { mutableStateOf("") }
     var currentReport by remember { mutableStateOf<ServiceReport?>(null) }
 
+    fun refreshDemo() {
+        demoLoading = true
+        demoError = ""
+        onLoadDemo { result ->
+            result.onSuccess { demoPosts = it }.onFailure { demoError = it.message ?: "Could not load sample posts." }
+            demoLoading = false
+        }
+    }
+
     when (screen) {
         Screen.HOME -> HomeScreen(
             reports = reports,
+            onTryDemo = {
+                screen = Screen.DEMO
+                if (demoPosts.isEmpty()) refreshDemo()
+            },
             onAdd = {
                 serviceUrl = ""
                 servicePurpose = ""
@@ -118,6 +169,13 @@ private fun ConnectorApp(
                 screen = Screen.REPORT
             }
         )
+        Screen.DEMO -> DemoScreen(
+            posts = demoPosts,
+            loading = demoLoading,
+            error = demoError,
+            onRefresh = ::refreshDemo,
+            onBack = { screen = Screen.HOME }
+        )
         Screen.REPORT -> currentReport?.let { report ->
             ReportScreen(
                 report = report,
@@ -131,6 +189,7 @@ private fun ConnectorApp(
 @Composable
 private fun HomeScreen(
     reports: List<ServiceReport>,
+    onTryDemo: () -> Unit,
     onAdd: () -> Unit,
     onOpenReport: (ServiceReport) -> Unit
 ) {
@@ -145,6 +204,7 @@ private fun HomeScreen(
         )
         Text("Prepare accessible Android integrations for web services that provide a supported way to connect.")
         Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text("Analyze a service") }
+        OutlinedButton(onClick = onTryDemo, modifier = Modifier.fillMaxWidth()) { Text("Try the public API demo") }
         Text("Your reports are saved on this device. They do not contain passwords or account sessions.")
         Text("Saved reports", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
         if (reports.isEmpty()) {
@@ -156,6 +216,40 @@ private fun HomeScreen(
                 }
             }
         }
+    }
+}
+
+
+@Composable
+private fun DemoScreen(
+    posts: List<DemoPost>,
+    loading: Boolean,
+    error: String,
+    onRefresh: () -> Unit,
+    onBack: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text("Public API demo", style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.semantics { heading() })
+        Text("Sample posts are fetched over HTTPS and shown with native Android text and buttons. No sign-in is needed.")
+        Text("This is test content. It does not access a real account or change any service data.")
+        Button(onClick = onRefresh, enabled = !loading, modifier = Modifier.fillMaxWidth()) {
+            Text(if (loading) "Loading sample posts" else "Refresh sample posts")
+        }
+        if (loading) {
+            CircularProgressIndicator()
+            Text("Loading sample posts. Please wait.")
+        }
+        if (error.isNotBlank()) Text("Could not load sample posts. $error")
+        posts.forEach { post ->
+            Text("Post ${post.id}: ${post.title}", style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() })
+            Text(post.body)
+        }
+        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Back to services") }
     }
 }
 
