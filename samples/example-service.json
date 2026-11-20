@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "service": {
+    "id": "example-public-catalog",
+    "displayName": "Example Public Catalog",
+    "baseUrl": "https://api.example.org",
+    "allowedHosts": ["api.example.org"]
+  },
+  "authentication": { "type": "none" },
+  "screens": [],
+  "actions": [],
+  "permissions": [],
+  "evidence": []
+}

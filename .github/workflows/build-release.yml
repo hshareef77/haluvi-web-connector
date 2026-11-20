@@ -24,7 +24,7 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.10.2'
+          gradle-version: '8.13'
       - name: Restore selected release signing key
         env:
           APK_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -126,22 +126,3 @@ jobs:
           test -n "$file" && test -s "$file" || { echo "::error::No signed $label produced."; exit 1; }
           tag="android-build-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
           gh release create "$tag" "$file" --target "$GITHUB_SHA" --title "$label — build ${GITHUB_RUN_NUMBER}" --notes "Manual build at commit $GITHUB_SHA. Verify Android signing identity before installing updates." --prerelease
-
-      - name: Report v2.2 build outcome
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-          FINAL_STATUS: ${{ job.status }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          path="build-diagnostics/developer-hub-v22-release.txt"
-          content=$(printf 'Run ID: %s\nCommit: %s\nResult: %s\nWorkflow: %s\nSee: https://github.com/%s/actions/runs/%s\n' "$GITHUB_RUN_ID" "$GITHUB_SHA" "$FINAL_STATUS" "$GITHUB_WORKFLOW" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" | base64 -w0)
-          current_sha=$(gh api "repos/$GITHUB_REPOSITORY/contents/$path?ref=main" --jq '.sha' 2>/dev/null || true)
-          if [[ -n "$current_sha" ]]; then
-            jq -n --arg message "Record Developer Hub v2.2 build result" --arg content "$content" --arg sha "$current_sha" '{message:$message,content:$content,sha:$sha,branch:"main"}' |
-              gh api "repos/$GITHUB_REPOSITORY/contents/$path" -X PUT --input -
-          else
-            jq -n --arg message "Record Developer Hub v2.2 build result" --arg content "$content" '{message:$message,content:$content,branch:"main"}' |
-              gh api "repos/$GITHUB_REPOSITORY/contents/$path" -X PUT --input -
-          fi
